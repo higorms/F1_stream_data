@@ -1,0 +1,9 @@
+data/
+
+extracao/__pycache__/
+
+f1_stream/
+
+kafka_/__pycache__/
+
+configs_kafka.json

@@ -1,0 +1,1 @@
+from extracao.extracao_clima import obter_dados_climaticos
