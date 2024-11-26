@@ -4,21 +4,19 @@ import json
 import time
 import os
 
-# Carregar configurações do arquivo JSON
-with open(os.path.join(os.path.dirname(__file__), 'configs_kafka.json')) as f:
-    kafka_config = json.load(f)
-
+# Usar a variável de ambiente definida no docker-compose
+KAFKA_BROKER_URL = os.environ.get('KAFKA_BROKER_URL', 'kafka:9092')
 
 # Inicializar o Kafka Producer
 producer = KafkaProducer(
-    bootstrap_servers=kafka_config['bootstrap_servers'],
+    bootstrap_servers=KAFKA_BROKER_URL,
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
 
 def enviar_para_kafka(dados):
     """Envia os dados para o Kafka."""
     try:
-        producer.send(kafka_config['topic'], value=dados)
+        producer.send("weather_data", value=dados)
         producer.flush()
         print(f"Dados enviados para o Kafka com sucesso!")
     except Exception as e:

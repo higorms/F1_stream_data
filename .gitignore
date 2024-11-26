@@ -4,6 +4,8 @@ extracao/__pycache__/
 
 f1_stream/
 
-kafka_/__pycache__/
+kafka_folder/__pycache__/
 
 configs_kafka.json
+
+grafana/
