@@ -1,6 +1,58 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, FloatType, IntegerType, StringType, ArrayType
 from pyspark.sql.functions import from_json, col, explode
+from influxdb_client import InfluxDBClient, Point, WritePrecision
+from influxdb_client.client.write_api import SYNCHRONOUS
+from datetime import datetime
+import pandas as pd
+import json
+import os
+
+# Carrega configurações do InfluxDB do arquivo JSON
+config_path = os.path.join(os.path.dirname(__file__), 'influx_config.json')
+with open(config_path) as config_file:
+    influx_config = json.load(config_file)
+
+# Configurações do InfluxDB
+INFLUXDB_URL = influx_config['INFLUXDB_URL']
+INFLUXDB_TOKEN = influx_config['INFLUXDB_TOKEN']
+INFLUXDB_ORG = "projeto_f1_stream"
+INFLUXDB_BUCKET = "weather_metrics"
+
+def write_to_influxdb(df, epoch_id):
+    try:
+        print(f"\n=== Processando batch {epoch_id} ===")
+        
+        client = InfluxDBClient(
+            url=INFLUXDB_URL,
+            token=INFLUXDB_TOKEN,
+            org=INFLUXDB_ORG
+        )
+        
+        write_api = client.write_api(write_options=SYNCHRONOUS)
+        
+        for row in df.collect():
+            timestamp = pd.to_datetime(row.date).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+            
+            point = Point("clima") \
+                .tag("corrida", str(row.meeting_key)) \
+                .tag("sessao", str(row.session_key)) \
+                .field("temperatura", float(row.air_temperature)) \
+                .field("umidade", float(row.humidity)) \
+                .field("pressao", float(row.pressure)) \
+                .field("chuva", float(row.rainfall)) \
+                .field("temp_pista", float(row.track_temperature)) \
+                .field("dir_vento", int(row.wind_direction)) \
+                .field("vel_vento", float(row.wind_speed)) \
+                .time(timestamp)
+            
+            write_api.write(bucket=INFLUXDB_BUCKET, record=point)
+        
+        client.close()
+        print(f"=== Batch {epoch_id} processado com sucesso ===")
+        
+    except Exception as e:
+        print(f"ERRO ao processar batch {epoch_id}: {str(e)}")
 
 # Configuração do Spark
 spark = SparkSession.builder \
@@ -27,7 +79,6 @@ record_schema = StructType() \
     .add("wind_direction", IntegerType()) \
     .add("wind_speed", FloatType())
 
-# Schema para o array de registros
 array_schema = ArrayType(record_schema)
 
 # Ler do Kafka
@@ -44,23 +95,16 @@ parsed_df = df.selectExpr("CAST(value AS STRING) as json_string") \
     .select(explode(col("data")).alias("weather")) \
     .select("weather.*")
 
-# Saída final com as colunas renomeadas
+# Configurar o nível de log do Spark
+spark.sparkContext.setLogLevel("WARN")
+
+# Enviar para o InfluxDB
 query = parsed_df \
-    .select(
-        col("air_temperature").alias("Temperatura_do_Ar"),
-        col("date").alias("Data"),
-        col("humidity").alias("Umidade"),
-        col("pressure").alias("Pressao"),
-        col("rainfall").alias("Chuva"),
-        col("track_temperature").alias("Temperatura_da_Pista"),
-        col("wind_direction").alias("Direcao_do_Vento"),
-        col("wind_speed").alias("Velocidade_do_Vento")
-    ) \
     .writeStream \
+    .foreachBatch(write_to_influxdb) \
     .outputMode("append") \
-    .format("console") \
-    .option("truncate", False) \
     .start()
 
-# Aguardar o término
+print("Stream iniciado, aguardando dados...")
+
 query.awaitTermination()

@@ -24,3 +24,9 @@ RUN wget -P /opt/bitnami/spark/jars/ https://repo1.maven.org/maven2/org/apache/s
 ENV SPARK_HOME=/opt/bitnami/spark
 ENV PATH=$SPARK_HOME/bin:$PATH
 ENV PYSPARK_PYTHON=python3
+
+# Instalar dependências adicionais
+RUN pip3 install influxdb-client
+
+# Instalar dependências Python
+RUN pip install pandas influxdb-client

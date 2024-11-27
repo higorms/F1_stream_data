@@ -1,5 +1,3 @@
-data/
-
 extracao/__pycache__/
 
 f1_stream/
@@ -9,3 +7,11 @@ kafka_folder/__pycache__/
 configs_kafka.json
 
 grafana/
+
+influxdb-data/
+
+app_config.json
+
+.env
+
+/spark_folder/influx_config.json
