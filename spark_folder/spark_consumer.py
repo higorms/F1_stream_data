@@ -23,36 +23,38 @@ def write_to_influxdb(df, epoch_id):
     try:
         print(f"\n=== Processando batch {epoch_id} ===")
         
-        client = InfluxDBClient(
+        with InfluxDBClient(
             url=INFLUXDB_URL,
             token=INFLUXDB_TOKEN,
             org=INFLUXDB_ORG
-        )
-        
-        write_api = client.write_api(write_options=SYNCHRONOUS)
-        
-        for row in df.collect():
-            timestamp = pd.to_datetime(row.date).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+        ) as client:
+            write_api = client.write_api(write_options=SYNCHRONOUS)
             
-            point = Point("clima") \
-                .tag("corrida", str(row.meeting_key)) \
-                .tag("sessao", str(row.session_key)) \
-                .field("temperatura", float(row.air_temperature)) \
-                .field("umidade", float(row.humidity)) \
-                .field("pressao", float(row.pressure)) \
-                .field("chuva", float(row.rainfall)) \
-                .field("temp_pista", float(row.track_temperature)) \
-                .field("dir_vento", int(row.wind_direction)) \
-                .field("vel_vento", float(row.wind_speed)) \
-                .time(timestamp)
-            
-            write_api.write(bucket=INFLUXDB_BUCKET, record=point)
+            for row in df.collect():
+                try:
+                    timestamp = pd.to_datetime(row.date).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+                    
+                    point = Point("clima") \
+                        .tag("corrida", str(row.meeting_key)) \
+                        .tag("sessao", str(row.session_key)) \
+                        .field("temperatura", float(row.air_temperature)) \
+                        .field("umidade", float(row.humidity)) \
+                        .field("pressao", float(row.pressure)) \
+                        .field("chuva", float(row.rainfall)) \
+                        .field("temp_pista", float(row.track_temperature)) \
+                        .field("dir_vento", int(row.wind_direction)) \
+                        .field("vel_vento", float(row.wind_speed)) \
+                        .time(timestamp)
+                    
+                    write_api.write(bucket=INFLUXDB_BUCKET, record=point)
+                except Exception as row_error:
+                    print(f"Erro ao escrever ponto no InfluxDB: {row_error}")
         
-        client.close()
         print(f"=== Batch {epoch_id} processado com sucesso ===")
         
     except Exception as e:
-        print(f"ERRO ao processar batch {epoch_id}: {str(e)}")
+        print(f"Erro no processamento do batch {epoch_id}: {e}")
+
 
 # Configuração do Spark
 spark = SparkSession.builder \
@@ -107,4 +109,10 @@ query = parsed_df \
 
 print("Stream iniciado, aguardando dados...")
 
-query.awaitTermination()
+try:
+    query.awaitTermination()
+except KeyboardInterrupt:
+    print("Stream interrompido pelo usuário.")
+except Exception as stream_error:
+    print(f"Erro no stream: {stream_error}")
+

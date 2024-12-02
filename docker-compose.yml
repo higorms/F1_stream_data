@@ -1,4 +1,3 @@
-
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.0.1
@@ -6,9 +5,10 @@ services:
     env_file:
       - .env
     environment:
-      ZOOKEEPER_CLIENT_PORT: ${ZOOKEEPER_PORT}
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
     ports:
-      - "${ZOOKEEPER_PORT}:${ZOOKEEPER_PORT}"
+      - "2181:2181"
     volumes:
       - zookeeper-data:/var/lib/zookeeper/data
 
@@ -17,15 +17,20 @@ services:
     container_name: kafka
     depends_on:
       - zookeeper
-    env_file:
-      - .env
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:${ZOOKEEPER_PORT}
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:${KAFKA_PORT}
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_DELETE_TOPIC_ENABLE: "true"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_MS: -1
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
     ports:
-      - "${KAFKA_PORT}:${KAFKA_PORT}"
+      - "9092:9092"
     volumes:
       - kafka-data:/var/lib/kafka/data
 
@@ -39,15 +44,10 @@ services:
     env_file:
       - .env
     environment:
-      - KAFKA_BROKER_URL=kafka:${KAFKA_PORT}
+      - KAFKA_BROKER_URL=kafka:9092
     volumes:
       - .:/app
-    command: >
-      sh -c "
-        echo 'Waiting for Kafka to be ready...' &&
-        sleep 15 &&
-        python entrypoint_fluxo_clima.py
-      "
+    command: tail -f /dev/null
 
   spark-master:
     build:
@@ -106,7 +106,7 @@ services:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
     ports:
-      - "${KAFKA_UI_PORT}:8080"
+      - "${KAFKA_UI_PORT}:${SPARK_MASTER_UI_PORT}"
     env_file:
       - .env
     environment:

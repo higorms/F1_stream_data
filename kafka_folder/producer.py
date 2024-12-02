@@ -31,5 +31,5 @@ if __name__ == "__main__":
             enviar_para_kafka(dados_climaticos)
 
         # Aguardar antes de buscar novos dados
-        time.sleep(60)  # Ajuste o intervalo conforme necessário
+        time.sleep(5)  # Ajuste o intervalo conforme necessário
 
