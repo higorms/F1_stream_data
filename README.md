@@ -5,4 +5,8 @@
 
 Inicialmente esse projeto tem como objetivo criar um dashboard no grafana com atualização em tempo real das condições climaticas durante corridas do campeonato mundial de Formula 1. Em futuras versões, serão implementadas informações referente aos carros durante as corridas.
 <br><br>
+![Fluxograma do pipeline](https://github.com/user-attachments/assets/017b4d52-973f-4b89-9d99-62852ab52a57)
+
+<br>
+
 ![Primeiro visual de dados climáticos no grafana](https://github.com/user-attachments/assets/ba2656b0-e146-4974-96da-fad0fde8dbb7)
